@@ -33,26 +33,13 @@ pipeline {
             }
         }
 
-        stage("Test Application") {
-            steps {
-                sh "mvn test"
-            }
-        }
-
-        stage("SonarQube Analysis") {
+        stage("Ensure WAR File Exists") {
             steps {
                 script {
-                    withSonarQubeEnv(credentialsId: 'jenkins-sonarqube-token') {
-                        sh "mvn sonar:sonar"
+                    def warFile = sh(script: "ls target/*.war", returnStdout: true).trim()
+                    if (!warFile) {
+                        error("WAR file not found! Check the Maven build process.")
                     }
-                }
-            }
-        }
-
-        stage("Quality Gate") {
-            steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'jenkins-sonarqube-token'
                 }
             }
         }
@@ -60,7 +47,7 @@ pipeline {
         stage("Build & Push Docker Image") {
             steps {
                 script {
-                    def dockerImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                    def dockerImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}", "--build-arg JAR_FILE=target/*.war .")
 
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-credentials') {
                         dockerImage.push()

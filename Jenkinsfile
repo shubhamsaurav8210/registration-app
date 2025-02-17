@@ -5,13 +5,13 @@ pipeline {
         jdk 'Java17'
         maven 'Maven3'
     }
+
     environment {
-            APP_NAME= "registeration-app-pipeline"
-            RELEASE = "1.0.0"
-            DOCKER_USER = "shubhamsaurav1999"
-            DOCKER_PASS = 'dockerhub'
-            IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
-            IMAGE_TAG = "{RELEASE}-${BUILD_NUMBER}"
+        APP_NAME = "registeration-app-pipeline"
+        RELEASE = "1.0.0"
+        DOCKER_USER = "shubhamsaurav1999"
+        IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
+        IMAGE_TAG = "${RELEASE}-${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -39,34 +39,32 @@ pipeline {
             }
         }
 
-        stage("SonarQube Analysis"){
+        stage("SonarQube Analysis") {
             steps {
                 script {
                     withSonarQubeEnv(credentialsId: 'jenkins-sonarqube-token') {
-                    sh "mvn sonar:sonar"
+                        sh "mvn sonar:sonar"
                     }
                 }
             }
         }
 
-        stage("Quality Gate"){
+        stage("Quality Gate") {
             steps {
                 script {
                     waitForQualityGate abortPipeline: false, credentialsId: 'jenkins-sonarqube-token'
-                 }
-             }
+                }
+            }
         }
 
         stage("Build & Push Docker Image") {
             steps {
                 script {
-                    docker.withRegistry('',DOCKER_PASS) {
-                        docker_image = docker.build "${IMAGE_NAME}"
-                    }
+                    def dockerImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
 
-                    docker.withRegistry('',DOCKER_PASS) {
-                        docker_image.push("${IMAGE_TAG}")
-                        docker_image.push('latest')
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-credentials') {
+                        dockerImage.push()
+                        dockerImage.push('latest')
                     }
                 }
             }

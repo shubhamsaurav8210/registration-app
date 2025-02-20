@@ -9,8 +9,7 @@ pipeline {
     environment {
         APP_NAME = "registeration-app-pipeline"
         RELEASE = "1.0.0"
-        DOCKER_USER = "ujjwal8400@gmail.com"
-        DOCKER_PASS = 'docker-hub-credentials'
+        DOCKER_USER = "iwphox"
         IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
         IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
     }
@@ -41,7 +40,10 @@ pipeline {
         stage("Verify WAR File") {
             steps {
                 script {
-                    sh "ls -lh target/*.war || echo 'WAR file not found!'"
+                    sh """
+                    echo "Checking if WAR file exists..."
+                    ls -lh target/*.war || { echo 'WAR file not found! Build might have failed'; exit 1; }
+                    """
                 }
             }
         }
@@ -75,18 +77,25 @@ pipeline {
         stage("Build & Push Docker Image") {
             steps {
                 script {
-                    // Securely retrieve DockerHub password from Jenkins credentials
-                    withCredentials([string(credentialsId: 'docker-hub-credentials', variable: 'DOCKER_PASS')]) {
-                        sh "docker login -u '${DOCKER_USER}' -p '${DOCKER_PASS}'"
-                        
+                    withCredentials([string(credentialsId: 'docker-hub-credentials', variable: 'DOCKER_TOKEN')]) {
+                        sh """
+                        echo '${DOCKER_TOKEN}' | docker login -u '${DOCKER_USER}' --password-stdin
 
-                        def dockerImage = "${IMAGE_NAME}:${IMAGE_TAG}"
-                        
-                        sh "docker build -t ${dockerImage} -f Dockerfile ."
-                        sh "docker tag ${dockerImage} ${IMAGE_NAME}:latest"
+                        echo "Listing target folder before Docker build..."
+                        ls -lh target/
 
-                        sh "docker push ${dockerImage}"
-                        sh "docker push ${IMAGE_NAME}:latest"
+                        def dockerImage="${IMAGE_NAME}:${IMAGE_TAG}"
+
+                        echo "Building Docker Image..."
+                        docker build -t ${dockerImage} -f Dockerfile .
+
+                        echo "Tagging Docker Image..."
+                        docker tag ${dockerImage} ${IMAGE_NAME}:latest
+
+                        echo "Pushing Docker Image to DockerHub..."
+                        docker push ${dockerImage}
+                        docker push ${IMAGE_NAME}:latest
+                        """
                     }
                 }
             }

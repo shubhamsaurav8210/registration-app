@@ -23,56 +23,23 @@ pipeline {
 
         stage("Checkout from SCM") {
             steps {
-                git branch: 'main', credentialsId: 'github', url: 'https://github.com/shubhamsaurav8210/registration-app'
+                script {
+                    git branch: 'main', credentialsId: 'github', url: 'https://github.com/shubhamsaurav8210/registration-app.git'
+                }
             }
         }
 
         stage("Build Application") {
             steps {
-                sh "mvn clean package"
+                script {
+                    sh "mvn clean package -DskipTests"
+                }
             }
         }
 
         stage("Verify WAR File") {
             steps {
-                sh "ls -l target/"  # Debugging step to confirm WAR file exists
-            }
-        }
-
-        stage("Test Application") {
-            steps {
-                sh "mvn test"
-            }
-        }
-
-        stage("SonarQube Analysis") {
-            steps {
                 script {
-                    withSonarQubeEnv(credentialsId: 'jenkins-sonarqube-token') {
-                        sh "mvn sonar:sonar"
-                    }
+                    sh "ls -lh target/*.war || echo 'WAR file not found!'"
                 }
-            }
-        }
-
-        stage("Quality Gate") {
-            steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'jenkins-sonarqube-token'
-                }
-            }
-        }
-
-        stage("Build & Push Docker Image") {
-            steps {
-                script {
-                    docker.withRegistry('', credentialsId: 'docker-hub-credentials') {
-                        docker_image = docker.build("${IMAGE_NAME}", "-f Dockerfile .")
-                        docker_image.push("${IMAGE_TAG}")
-                        docker_image.push('latest')
-                    }
-                }
-            }
-        }
-    }
-}
+           

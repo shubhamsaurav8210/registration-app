@@ -9,7 +9,8 @@ pipeline {
     environment {
         APP_NAME = "registeration-app-pipeline"
         RELEASE = "1.0.0"
-        DOCKER_USER = "shubhamsaurav1999"
+        DOCKER_USER = "ujjwal8400@gmail.com"
+        DOCKER_PASS = 'docker-hub-credentials'
         IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
         IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
     }
@@ -77,6 +78,7 @@ pipeline {
                     // Securely retrieve DockerHub password from Jenkins credentials
                     withCredentials([string(credentialsId: 'docker-hub-credentials', variable: 'DOCKER_PASS')]) {
                         sh "docker login -u '${DOCKER_USER}' -p '${DOCKER_PASS}'"
+                        
 
                         def dockerImage = "${IMAGE_NAME}:${IMAGE_TAG}"
                         

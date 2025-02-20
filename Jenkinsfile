@@ -74,15 +74,18 @@ pipeline {
         stage("Build & Push Docker Image") {
             steps {
                 script {
-                    sh "docker login -u '${DOCKER_USER}' -p '${DOCKER_PASS}'"
+                    // Securely retrieve DockerHub password from Jenkins credentials
+                    withCredentials([string(credentialsId: 'docker-hub-credentials', variable: 'DOCKER_PASS')]) {
+                        sh "docker login -u '${DOCKER_USER}' -p '${DOCKER_PASS}'"
 
-                    def dockerImage = "${IMAGE_NAME}:${IMAGE_TAG}"
-                    
-                    sh "docker build -t ${dockerImage} -f Dockerfile ."
-                    sh "docker tag ${dockerImage} ${IMAGE_NAME}:latest"
+                        def dockerImage = "${IMAGE_NAME}:${IMAGE_TAG}"
+                        
+                        sh "docker build -t ${dockerImage} -f Dockerfile ."
+                        sh "docker tag ${dockerImage} ${IMAGE_NAME}:latest"
 
-                    sh "docker push ${dockerImage}"
-                    sh "docker push ${IMAGE_NAME}:latest"
+                        sh "docker push ${dockerImage}"
+                        sh "docker push ${IMAGE_NAME}:latest"
+                    }
                 }
             }
         }

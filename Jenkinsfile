@@ -42,4 +42,49 @@ pipeline {
                 script {
                     sh "ls -lh target/*.war || echo 'WAR file not found!'"
                 }
-           
+            }
+        }
+
+        stage("Test Application") {
+            steps {
+                script {
+                    sh "mvn test"
+                }
+            }
+        }
+
+        stage("SonarQube Analysis") {
+            steps {
+                script {
+                    withSonarQubeEnv(credentialsId: 'jenkins-sonarqube-token') {
+                        sh "mvn sonar:sonar"
+                    }
+                }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+                script {
+                    waitForQualityGate abortPipeline: false
+                }
+            }
+        }
+
+        stage("Build & Push Docker Image") {
+            steps {
+                script {
+                    sh "docker login -u '${DOCKER_USER}' -p '${DOCKER_PASS}'"
+
+                    def dockerImage = "${IMAGE_NAME}:${IMAGE_TAG}"
+                    
+                    sh "docker build -t ${dockerImage} -f Dockerfile ."
+                    sh "docker tag ${dockerImage} ${IMAGE_NAME}:latest"
+
+                    sh "docker push ${dockerImage}"
+                    sh "docker push ${IMAGE_NAME}:latest"
+                }
+            }
+        }
+    }
+}
